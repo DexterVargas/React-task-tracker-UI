@@ -8,9 +8,9 @@ import { cn } from '@/lib/utils';
 
 interface TaskCardProps {
     task: Task;
-    onToggleStatus: (taskId: string) => void;
-    onEdit: (task: Task) => void;
-    onDelete: (taskId: string) => void;
+    // onToggleStatus: (taskId: string) => void;
+    // onEdit: (task: Task) => void;
+    // onDelete: (taskId: string) => void;
 }
 
 const priorityConfig = {
@@ -19,7 +19,12 @@ const priorityConfig = {
     LOW: { color: 'priority-low', label: 'Low' },
 };
 
-export function TaskCard({ task, onToggleStatus, onEdit, onDelete }: TaskCardProps) {
+export function TaskCard({
+    task,
+    // onToggleStatus, 
+    // onEdit, 
+    // onDelete 
+}: TaskCardProps) {
     const isCompleted = task.status === 'CLOSED';
     const isOverdue = new Date(task.dueDate) < new Date() && !isCompleted;
     const priority = priorityConfig[task.priority];

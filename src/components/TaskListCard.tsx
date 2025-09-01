@@ -3,25 +3,36 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger
+} from "@/components/ui/alert-dialog"
+
 import { Plus, Edit2, Trash2, CheckCircle2, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface TaskListCardProps {
     taskList: TaskList;
     stats: { total: number; completed: number; progress: number };
-    // onAddTask: (listId: string) => void;
-    // onEditList: (taskList: TaskList) => void;
-    // onDeleteList: (listId: string) => void;
-    // onViewTasks: (listId: string) => void;
+    // onAddTask: (taskListId: string) => void;
+    onEditList: (taskList: TaskList) => void;
+    onDeleteList: (taskListId: string) => void;
+    onViewTasks: (taskListId: string) => void;
 }
 
 export function TaskListCard({
     taskList,
     stats,
     // onAddTask, 
-    // onEditList, 
-    // onDeleteList, 
-    // onViewTasks 
+    onEditList,
+    onDeleteList,
+    onViewTasks
 }: TaskListCardProps) {
 
     const hasCompletedTasks = stats.completed > 0;
@@ -47,18 +58,38 @@ export function TaskListCard({
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0"
-                        // onClick={() => onEditList(taskList)}
+                            onClick={() => onEditList(taskList)}
                         >
                             <Edit2 className="h-4 w-4" />
                         </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                        // onClick={() => onDeleteList(taskList.id)}
-                        >
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
+
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                        Are you sure you want to delete this list?
+                                    </AlertDialogTitle>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                        onClick={() => onDeleteList(taskList.id)}
+                                        className="bg-red-600 text-white hover:bg-red-700"
+                                    >
+                                        Delete
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     </div>
                 </div>
             </CardHeader>
@@ -107,7 +138,7 @@ export function TaskListCard({
                         variant="outline"
                         size="sm"
                         className="flex-1"
-                    // onClick={() => onViewTasks(taskList.id)}
+                        onClick={() => onViewTasks(taskList.id)}
                     >
                         View Tasks
                     </Button>

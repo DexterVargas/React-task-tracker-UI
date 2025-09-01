@@ -16,10 +16,17 @@ interface TaskListDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     taskList?: TaskList | null;
-    onSubmit: (data: Omit<TaskList, 'id' | 'createdDate' | 'updatedDate' | 'tasks'>) => void;
+    onSubmit: (data: Omit<TaskList, 'id' | 'created' | 'updated' | 'tasks'>) => void;
+    isCreating: boolean;
 }
 
-export const TaskListDialog = ({ open, onOpenChange, taskList, onSubmit }: TaskListDialogProps) => {
+export const TaskListDialog = ({
+    open,
+    onOpenChange,
+    taskList,
+    onSubmit,
+    isCreating
+}: TaskListDialogProps) => {
 
     const { toast } = useToast();
 
@@ -92,12 +99,47 @@ export const TaskListDialog = ({ open, onOpenChange, taskList, onSubmit }: TaskL
                     </div>
 
                     <div className="flex justify-end gap-2 pt-4">
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => onOpenChange(false)}
+                            disabled={isCreating}>
                             Cancel
                         </Button>
-                        <Button type="submit" className="bg-gradient-primary">
-                            {isEditing ? 'Update List' : 'Create List'}
+                        <Button
+                            type="submit"
+                            className="bg-gradient-primary"
+                            disabled={isCreating} // prevent double submit
+                        >
+                            {isCreating ? (
+                                <div className="flex items-center gap-2">
+                                    <svg
+                                        className="animate-spin h-4 w-4 text-white"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <circle
+                                            className="opacity-25"
+                                            cx="12"
+                                            cy="12"
+                                            r="10"
+                                            stroke="currentColor"
+                                            strokeWidth="4"
+                                        />
+                                        <path
+                                            className="opacity-75"
+                                            fill="currentColor"
+                                            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                                        />
+                                    </svg>
+                                    Saving Task List...
+                                </div>
+                            ) : (
+                                isEditing ? 'Update List' : 'Create List'
+                            )}
                         </Button>
+
                     </div>
                 </form>
             </DialogContent>

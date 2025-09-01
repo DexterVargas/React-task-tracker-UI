@@ -21,16 +21,50 @@ export class TaskApiService {
         });
 
         if (!response.ok) {
-            throw new Error(`FHIR API Error: ${response.status} ${response.statusText}`);
+            throw new Error(`TaskTracker API Error: ${response.status} ${response.statusText}`);
         }
 
+        // Handle 204 No Content → return "null" but cast to T
+        if (response.status === 204) {
+            return null as unknown as T;
+        }
 
-        return response.json();
+        return response.json() as Promise<T>;
 
     }
 
     async getTaskList(): Promise<TaskList[]> {
         return this.request("/task-lists");
+    }
+
+    async viewTaskList(taskListId: string): Promise<TaskList> {
+        return this.request(`/task-lists/${taskListId}`);
+    }
+
+    async createTaskList(reqBody: { title: string, description: string }): Promise<TaskList> {
+        return this.request(`/task-lists`,
+            {
+                method: 'POST',
+                body: JSON.stringify(reqBody)
+            }
+        );
+    }
+
+    async updateTaskList(taskListId: string, reqBody: { title: string, description: string }): Promise<TaskList> {
+        return this.request(`/task-lists/${taskListId}`,
+            {
+                method: 'PUT',
+                body: JSON.stringify(reqBody)
+            }
+        );
+    }
+
+    async deleteTaskList(taskListId: string): Promise<void> {
+        return this.request(`/task-lists/${taskListId}`,
+            {
+                method: 'DELETE'
+            }
+        );
     }
 
 }

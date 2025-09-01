@@ -8,8 +8,8 @@ export interface Task {
   dueDate: string;
   status: TaskStatus;
   priority: TaskPriority;
-  createdDate: string;
-  updatedDate: string;
+  created: string;
+  updated: string;
 }
 
 export interface TaskList {
@@ -19,8 +19,8 @@ export interface TaskList {
   tasks: Task[];
   count?: number;
   progress?: number;
-  createdDate: string;
-  updatedDate: string;
+  created: string;
+  updated: string;
 }
 
 export interface TaskListStats {

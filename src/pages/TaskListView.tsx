@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useTaskStore } from '@/hooks/useTaskStore';
-import type { Task } from '@/types';
+// import { useTaskStore } from '@/hooks/useTaskStore';
+import type { Task, TaskList } from '@/types';
 import { TaskCard } from '@/components/TaskCard';
 import { TaskDialog } from '@/components/TaskDialog';
 import { Button } from '@/components/ui/button';
@@ -24,16 +24,26 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { TaskApiService } from "@/services/taskApi";
+import Spinner from './Spinner';
+import { NotFound } from './NotFound';
+
+const api = new TaskApiService();
 
 export default function TaskListView() {
     const { id } = useParams<{ id: string }>();
+    const [taskList, setTaskLists] = useState<TaskList>();
     const navigate = useNavigate();
-    const {
-        getTaskList,
-        getTaskListStats,
-        updateTask,
-        deleteTask
-    } = useTaskStore();
+    const [loading, setLoading] = useState(true);   // <-- loading state
+    const [error, setError] = useState(false);
+
+    const [stats, setStats] = useState({ total: 0, completed: 0, progress: 0 })
+    // const {
+    //     getTaskList,
+    //     getTaskListStats,
+    //     updateTask,
+    //     deleteTask
+    // } = useTaskStore();
     const { toast } = useToast();
 
     const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
@@ -42,13 +52,100 @@ export default function TaskListView() {
     const [filterPriority, setFilterPriority] = useState<'all' | 'low' | 'medium' | 'high'>('all');
     const [sortBy, setSortBy] = useState<'dueDate' | 'priority' | 'created'>('dueDate');
 
+    // if (!id) {
+    //     navigate('/');
+    //     return null;
+    // }
+
+    // const taskList = getTaskList(id);
+    // const stats = getTaskListStats(id);
+
+
+
+    const fetchTaskLists = useCallback(async () => {
+        if (!id) return;
+        try {
+            setLoading(true);
+            const taskList: TaskList = await api.viewTaskList(id);
+            console.log(taskList)
+            if (!taskList) {
+                setError(true);
+            }
+            const total = taskList.tasks.length;
+            const completed = taskList.tasks.filter(task => task.status === 'CLOSED').length;
+            const progress = Math.round(Number(taskList.progress) * 100, 2);
+
+            setTaskLists(taskList);
+            setStats({ total, completed, progress });
+
+        } catch (err) {
+            setError(true);
+            console.error("Error fetching task lists:", err);
+        } finally {
+            setLoading(false);
+        }
+    }, [id]);
+
+    useEffect(() => {
+        fetchTaskLists();
+    }, [fetchTaskLists]);
+
     if (!id) {
         navigate('/');
         return null;
     }
 
-    const taskList = getTaskList(id);
-    const stats = getTaskListStats(id);
+
+
+    // const handleToggleTaskStatus = (taskId: string) => {
+    //     const task = taskList.tasks.find(t => t.id === taskId);
+    //     if (!task) return;
+
+    //     const newStatus = task.status === 'OPEN' ? 'CLOSED' : 'OPEN';
+    //     updateTask(id, taskId, { status: newStatus });
+
+    //     toast({
+    //         title: newStatus === 'CLOSED' ? 'Task completed' : 'Task reopened',
+    //         description: `"${task.title}" marked as ${newStatus.toLowerCase()}.`,
+    //     });
+    // };
+
+    // const handleEditTask = (task: Task) => {
+    //     setEditingTask(task);
+    //     setIsTaskDialogOpen(true);
+    // };
+
+    // const handleDeleteTask = (taskId: string) => {
+    //     const task = taskList.tasks.find(t => t.id === taskId);
+    //     if (!task) return;
+
+    //     if (confirm(`Delete "${task.title}"?`)) {
+    //         deleteTask(id, taskId);
+    //         toast({
+    //             title: 'Task deleted',
+    //             description: `"${task.title}" has been deleted.`,
+    //             variant: 'destructive',
+    //         });
+    //     }
+    // };
+
+    // const handleAddTask = () => {
+    //     setEditingTask(null);
+    //     setIsTaskDialogOpen(true);
+    // };
+
+    const formatDate = (dateString: string) => {
+        return new Date(dateString).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    if (loading) return <Spinner />;        // ✅ Show spinner while fetching
+
 
     if (!taskList) {
         return (
@@ -81,14 +178,13 @@ export default function TaskListView() {
             task.priority.toLowerCase() === filterPriority
         );
     }
-
+    const priorityOrder: Record<string, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 };
     // Apply sorting
     filteredTasks = [...filteredTasks].sort((a, b) => {
         switch (sortBy) {
             case 'dueDate':
                 return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
             case 'priority':
-                const priorityOrder = { HIGH: 3, MEDIUM: 2, LOW: 1 };
                 return priorityOrder[b.priority] - priorityOrder[a.priority];
             case 'created':
                 return new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime();
@@ -97,50 +193,7 @@ export default function TaskListView() {
         }
     });
 
-    const handleToggleTaskStatus = (taskId: string) => {
-        const task = taskList.tasks.find(t => t.id === taskId);
-        if (!task) return;
-
-        const newStatus = task.status === 'OPEN' ? 'CLOSED' : 'OPEN';
-        updateTask(id, taskId, { status: newStatus });
-
-        toast({
-            title: newStatus === 'CLOSED' ? 'Task completed' : 'Task reopened',
-            description: `"${task.title}" marked as ${newStatus.toLowerCase()}.`,
-        });
-    };
-
-    const handleEditTask = (task: Task) => {
-        setEditingTask(task);
-        setIsTaskDialogOpen(true);
-    };
-
-    const handleDeleteTask = (taskId: string) => {
-        const task = taskList.tasks.find(t => t.id === taskId);
-        if (!task) return;
-
-        if (confirm(`Delete "${task.title}"?`)) {
-            deleteTask(id, taskId);
-            toast({
-                title: 'Task deleted',
-                description: `"${task.title}" has been deleted.`,
-                variant: 'destructive',
-            });
-        }
-    };
-
-    const handleAddTask = () => {
-        setEditingTask(null);
-        setIsTaskDialogOpen(true);
-    };
-
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-    };
+    if (error) return <NotFound />;         // Only show NotFound after load
 
     return (
         <div className="min-h-screen bg-background">
@@ -169,17 +222,17 @@ export default function TaskListView() {
                             <div className="flex items-center gap-6 text-sm">
                                 <div className="flex items-center gap-2">
                                     <Calendar className="h-4 w-4" />
-                                    <span>Created {formatDate(taskList.createdDate)}</span>
+                                    <span>Created {formatDate(taskList.created)}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Clock className="h-4 w-4" />
-                                    <span>Updated {formatDate(taskList.updatedDate)}</span>
+                                    <span>Updated {formatDate(taskList.updated)}</span>
                                 </div>
                             </div>
                         </div>
 
                         <Button
-                            onClick={handleAddTask}
+                            // onClick={handleAddTask}
                             className="bg-white/20 hover:bg-white/30 text-white border-white/30"
                             variant="outline"
                         >
@@ -279,7 +332,9 @@ export default function TaskListView() {
                                     }
                                 </p>
                                 {taskList.tasks.length === 0 && (
-                                    <Button onClick={handleAddTask} className="bg-gradient-primary">
+                                    <Button
+                                        // onClick={handleAddTask} 
+                                        className="bg-gradient-primary">
                                         <Plus className="h-4 w-4 mr-2" />
                                         Add First Task
                                     </Button>
@@ -291,9 +346,9 @@ export default function TaskListView() {
                             <TaskCard
                                 key={task.id}
                                 task={task}
-                                onToggleStatus={handleToggleTaskStatus}
-                                onEdit={handleEditTask}
-                                onDelete={handleDeleteTask}
+                            // onToggleStatus={handleToggleTaskStatus}
+                            // onEdit={handleEditTask}
+                            // onDelete={handleDeleteTask}
                             />
                         ))
                     )}
