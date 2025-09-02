@@ -34,3 +34,26 @@ Built with a clean interface, smooth animations, and professional design to make
 - Toast notifications for user feedback  
 - Intuitive navigation between views  
 - Progress bars updating in rea
+
+### UI Screenshots
+
+![alt text](UI/Dashboard.png)
+
+![alt text](<UI/View Task List.png>)
+
+![alt text](<UI/CRUD - READ Task List.png>)
+
+![alt text](<UI/CRUD - CREATE Task List.png>)
+
+![alt text](<UI/CRUD - UPDATE Task List.png>)
+
+![alt text](<UI/CRUD - DELETE Task List.png>)
+
+
+![alt text](<UI/CRUD - CREATE Task.png>)
+
+![alt text](<UI/CRUD - READ Task.png>)
+
+![alt text](<UI/CRUD - UPDATE Task.png>)
+
+![alt text](<UI/CRUD - DELETE Task.png>)
