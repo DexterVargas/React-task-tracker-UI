@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import type { Task, TaskList } from '@/types';
+import type { Task, TaskList, TaskStatus } from '@/types';
 import { TaskCard } from '@/components/TaskCard';
 import { TaskDialog } from '@/components/TaskDialog';
 import { Button } from '@/components/ui/button';
@@ -27,21 +27,16 @@ import { TaskApiService } from "@/services/taskApi";
 import Spinner from './Spinner';
 import { NotFound } from './NotFound';
 import { toast } from "sonner"
+
 const api = new TaskApiService();
 
-
-type TaskUpdate = Omit<Task, "created" | "updated">;
-
-
 export default function TaskListView() {
-    const { id } = useParams<{ id: string }>();
+    const { id: taskListId } = useParams<{ id: string }>();
     const [taskList, setTaskLists] = useState<TaskList>();
     const navigate = useNavigate();
-    const [loading, setLoading] = useState(true);   // <-- loading state
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
-
     const [stats, setStats] = useState({ total: 0, completed: 0, progress: 0 })
-
     const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
     const [filterStatus, setFilterStatus] = useState<'all' | 'open' | 'closed'>('all');
@@ -49,17 +44,17 @@ export default function TaskListView() {
     const [sortBy, setSortBy] = useState<'dueDate' | 'priority' | 'created'>('dueDate');
 
     const fetchTaskList = useCallback(async () => {
-        if (!id) return;
+        if (!taskListId) return;
         try {
             setLoading(true);
-            const taskList: TaskList = await api.viewTaskList(id);
-            console.log(taskList)
+            const taskList: TaskList = await api.viewTaskList(taskListId);
+            // console.log(taskList)
             if (!taskList) {
                 setError(true);
             }
             const total = taskList.tasks.length;
             const completed = taskList.tasks.filter(task => task.status === 'CLOSED').length;
-            const progress = Math.round(Number(taskList.progress) * 100, 2);
+            const progress = Math.round(Number(taskList.progress) * 100);
 
             setTaskLists(taskList);
             setStats({ total, completed, progress });
@@ -70,48 +65,33 @@ export default function TaskListView() {
         } finally {
             setLoading(false);
         }
-    }, [id]);
+    }, [taskListId]);
 
     useEffect(() => {
         fetchTaskList();
     }, [fetchTaskList]);
 
-    if (!id) {
+    if (!taskListId) {
         navigate('/');
         return null;
     }
-
-    // const handleUpdateTask = async (taskListId: string, taskId: string, formData: Omit<Task, 'id' | 'created' | 'updated'>) => {
-    //     if (!taskId || !taskListId) return;
-    //     try {
-    //         const response = await api.updateTask(taskListId, taskId,
-    //             {
-    //                 ...formData,
-    //                 id: taskId,
-    //             });
-
-    //         toast.success(`Task "${formData.title}" has been updated.`);
-    //         console.log(response)
-
-    //     } catch (error) {
-    //         toast.error('Failed to create new Task.');
-    //     }
-    // };
 
     const handleToggleTaskStatus = async (taskId: string) => {
         const task = taskList?.tasks.find(t => t.id === taskId);
         if (!task) return;
 
-        const newStatus = task.status === 'OPEN' ? 'CLOSED' : 'OPEN';
+        const newStatus: TaskStatus = task.status === 'OPEN' ? 'CLOSED' : 'OPEN';
+        const newTask = { ...task, status: newStatus };
 
-        //  
-        // await api.updateTaskStatus(id, taskId, {
-        //     ...taskList,
-        //     status: newStatus,
-        // } satisfies Omit<Task, "created" | "updated">);
+        console.log("NEW", newTask)
 
-        const toastTitle = newStatus === 'CLOSED' ? 'Task completed' : 'Task reopened'
-        toast.info(toastTitle);
+        await api.updateTaskStatus(taskListId, taskId, newTask);
+
+        if (newTask.status === 'CLOSED') {
+            toast.success(`Task " ${newTask.title} " is complete.`);
+        } else {
+            toast.info(`Task " ${newTask.title} " is active again.`);
+        }
         await fetchTaskList();
     };
 
@@ -125,7 +105,7 @@ export default function TaskListView() {
         if (!task) return;
 
         try {
-            await api.deleteTask(id, taskId);
+            await api.deleteTask(taskListId, taskId);
             toast.success(`Task "${task.title}" has been deleted.`);
             await fetchTaskList();
         } catch (error) {
@@ -365,7 +345,7 @@ export default function TaskListView() {
             <TaskDialog
                 open={isTaskDialogOpen}
                 onOpenChange={setIsTaskDialogOpen}
-                listId={id}
+                listId={taskListId}
                 task={editingTask}
                 onClose={async () => {
                     setIsTaskDialogOpen(false);

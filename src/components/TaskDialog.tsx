@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import type { Task, TaskStatus, TaskPriority, TaskList } from '@/types';
 import {
     Dialog,
@@ -128,7 +128,7 @@ export function TaskDialog({ open, onOpenChange, listId, task, onClose, taskList
         onOpenChange(open);
         if (!open) onClose();
     };
-    // if (loading) return <Spinner />;
+
     return (
         <Dialog open={open} onOpenChange={handleClose}>
             <DialogContent className="sm:max-w-md">

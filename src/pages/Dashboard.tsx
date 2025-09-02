@@ -1,67 +1,85 @@
-import { useState } from 'react';
-import { useTaskStore } from '@/hooks/useTaskStore';
-import type { TaskList, Task } from '@/types';
+import { useEffect, useState, useCallback } from "react";
+import { TaskApiService } from "@/services/taskApi";
+import type { TaskList } from "@/types";
 import { TaskListCard } from '@/components/TaskListCard';
 import { TaskDialog } from '@/components/TaskDialog';
 import { TaskListDialog } from '@/components/TaskListDialog';
 import { Button } from '@/components/ui/button';
 import { Plus, CheckCircle2, Clock, BarChart3 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "sonner"
 
 
-export default function Dashboard() {
-    const { taskLists, createTaskList, updateTaskList, deleteTaskList, getTaskListStats } = useTaskStore();
-    const { toast } = useToast();
 
+import Spinner from './Spinner';
+import Footer from "@/components/shared/Footer";
+const api = new TaskApiService();
+
+const Dashboard = () => {
+    const [taskLists, setTaskLists] = useState<TaskList[]>([]);
+    const [loading, setLoading] = useState(true);
     const [isTaskListDialogOpen, setIsTaskListDialogOpen] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
     const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
     const [editingTaskList, setEditingTaskList] = useState<TaskList | null>(null);
     const [activeListId, setActiveListId] = useState<string | null>(null);
+    const [activeListIdData, setActiveListIdData] = useState<TaskList | null>(null);
 
-    // Calculate overall stats
     const totalTasks = taskLists.reduce((sum, list) => sum + list.tasks.length, 0);
+
     const completedTasks = taskLists.reduce((sum, list) =>
         sum + list.tasks.filter(task => task.status === 'CLOSED').length, 0
     );
+
     const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-    const handleCreateTaskList = (data: Omit<TaskList, 'id' | 'createdDate' | 'updatedDate' | 'tasks'>) => {
-        createTaskList(data);
-        setIsTaskListDialogOpen(false);
-        toast({
-            title: 'Task list created',
-            description: `"${data.title}" has been created successfully.`,
-        });
+    const handleCreateTaskList = async (data: Omit<TaskList, 'id' | 'created' | 'updated' | 'tasks'>) => {
+        try {
+            setIsCreating(true);
+            await api.createTaskList(data);
+
+            toast.success(`Task list "${data.title}" has been created successfully.`);
+            await fetchTaskLists();
+            setIsTaskListDialogOpen(false);
+        } catch (error) {
+            toast.error('Failed to create task list.');
+        } finally {
+            setIsCreating(false);
+        }
     };
 
-    const handleUpdateTaskList = (data: Omit<TaskList, 'id' | 'createdDate' | 'updatedDate' | 'tasks'>) => {
+    const handleUpdateTaskList = async (data: Omit<TaskList, 'id' | 'created' | 'updated' | 'tasks'>) => {
         if (!editingTaskList) return;
-
-        updateTaskList(editingTaskList.id, data);
-        setEditingTaskList(null);
-        setIsTaskListDialogOpen(false);
-        toast({
-            title: 'Task list updated',
-            description: `"${data.title}" has been updated successfully.`,
-        });
+        try {
+            setIsCreating(true);
+            await api.updateTaskList(
+                editingTaskList.id,
+                {
+                    ...data,
+                    id: editingTaskList.id,
+                });
+            toast.success(`Task list "${data.title}" has been updated successfully.`);
+            await fetchTaskLists();
+            setEditingTaskList(null);
+            setIsTaskListDialogOpen(false);
+        } catch (error) {
+            toast.error('Failed to update task list.');
+        } finally {
+            setIsCreating(false);
+        }
     };
 
-    const handleDeleteTaskList = (listId: string) => {
-        const list = taskLists.find(l => l.id === listId);
+    const handleDeleteTaskList = async (taskListId: string) => {
+        const list = taskLists.find(l => l.id === taskListId);
         if (!list) return;
 
-        if (list.tasks.length > 0) {
-            if (!confirm(`Delete "${list.title}" and all its ${list.tasks.length} tasks?`)) {
-                return;
-            }
+        try {
+            await api.deleteTaskList(taskListId);
+            toast.success(`Task List "${list.title}" has been deleted.`);
+            await fetchTaskLists();
+        } catch (error) {
+            toast.error('Failed to delete task list.');
+            console.error(error);
         }
-
-        deleteTaskList(listId);
-        toast({
-            title: 'Task list deleted',
-            description: `"${list.title}" has been deleted.`,
-            variant: 'destructive',
-        });
     };
 
     const handleEditTaskList = (taskList: TaskList) => {
@@ -69,15 +87,37 @@ export default function Dashboard() {
         setIsTaskListDialogOpen(true);
     };
 
-    const handleAddTask = (listId: string) => {
+    const handleAddTask = async (listId: string) => {
+        console.log("Must show add task dialog")
         setActiveListId(listId);
         setIsTaskDialogOpen(true);
+        setActiveListIdData(taskLists.find(list => list.id === listId) || null);
     };
 
-    const handleViewTasks = (listId: string) => {
-        // Navigate to the detailed task view
-        window.location.href = `/list/${listId}`;
+    useEffect(() => {
+        fetchTaskLists();
+    }, []);
+
+    const fetchTaskLists = useCallback(async () => {
+        try {
+            setLoading(true);
+            const taskLists: TaskList[] = await api.getTaskList();
+            const sortedTaskLists = [...taskLists].sort(
+                (a, b) => new Date(a.created).getTime() - new Date(b.created).getTime() // newest first
+            );
+            setTaskLists(sortedTaskLists);
+        } catch (err) {
+            console.error("Error fetching task lists:", err);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const handleViewTasks = (taskListId: string) => {
+        window.location.href = `/list/${taskListId}`;
     };
+
+    if (loading) return <Spinner />;
 
     return (
         <div className="min-h-screen bg-background">
@@ -86,8 +126,10 @@ export default function Dashboard() {
                 <div className="container mx-auto px-6 py-8">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-3xl font-bold mb-2">Dexter Vargas Task Tracker</h1>
-                            <p className="text-white/90">Organize your tasks and boost productivity</p>
+                            <h1 className="inline-block py-0.5 pl-3 text-heading z-20 relative before:content-[''] before:absolute before:w-2/3 before:ml-20 before:top-0 before:left-0 before:bottom-0 before:-z-10 before:bg-indigo-400 font-['Caveat']">
+                                <i className="text-3xl text-white/90"> 📝TASKito | <small>Task Tracking App</small></i>
+                            </h1>
+                            <p className="text-white/90 ml-20">Organize your tasks and boost productivity</p>
                         </div>
                         <Button
                             onClick={() => setIsTaskListDialogOpen(true)}
@@ -146,7 +188,7 @@ export default function Dashboard() {
                                 <BarChart3 className="h-5 w-5 text-warning" />
                             </div>
                             <div>
-                                <p className="text-sm text-muted-foreground">Progress</p>
+                                <p className="text-sm text-muted-foreground">Overall Progress</p>
                                 <p className="text-2xl font-semibold">{overallProgress}%</p>
                             </div>
                         </div>
@@ -179,12 +221,14 @@ export default function Dashboard() {
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {taskLists.map((taskList) => {
-                                const stats = getTaskListStats(taskList.id);
+
+                                const taskCLOSED = taskList.tasks.filter(task => task.status === 'CLOSED').length;
+
                                 return (
                                     <TaskListCard
                                         key={taskList.id}
                                         taskList={taskList}
-                                        stats={stats || { total: 0, completed: 0, progress: 0 }}
+                                        stats={{ total: Number(taskList.count), completed: taskCLOSED, progress: Number(taskList.progress) * 100 }}
                                         onAddTask={handleAddTask}
                                         onEditList={handleEditTaskList}
                                         onDeleteList={handleDeleteTaskList}
@@ -203,17 +247,24 @@ export default function Dashboard() {
                 onOpenChange={setIsTaskListDialogOpen}
                 taskList={editingTaskList}
                 onSubmit={editingTaskList ? handleUpdateTaskList : handleCreateTaskList}
+                isCreating={isCreating}
             />
 
             <TaskDialog
                 open={isTaskDialogOpen}
                 onOpenChange={setIsTaskDialogOpen}
                 listId={activeListId}
-                onClose={() => {
+                onClose={async () => {
                     setIsTaskDialogOpen(false);
                     setActiveListId(null);
+                    await fetchTaskLists();
                 }}
+                taskListData={activeListIdData}
             />
+
+            <Footer />
         </div>
     );
 }
+
+export default Dashboard

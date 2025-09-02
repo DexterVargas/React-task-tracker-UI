@@ -109,7 +109,7 @@ export const TaskListDialog = ({
                         <Button
                             type="submit"
                             className="bg-gradient-primary"
-                            disabled={isCreating} // prevent double submit
+                            disabled={isCreating}
                         >
                             {isCreating ? (
                                 <div className="flex items-center gap-2">

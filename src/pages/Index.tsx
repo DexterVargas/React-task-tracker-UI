@@ -1,5 +1,4 @@
-import Dashboard from './Dashboard';
-import List from './List';
+import Dashboard from '@/pages/Dashboard';
 export const Index = () => {
-    return <List />;
+    return <Dashboard />;
 }

@@ -1,9 +1,9 @@
-import type { Task, TaskPriority } from '@/types';
+import type { Task } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Calendar, Clock, Edit2, Trash2 } from 'lucide-react';
+import { Calendar, Edit2, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 import {
