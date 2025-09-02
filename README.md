@@ -5,6 +5,11 @@ Built with a clean interface, smooth animations, and professional design to make
 
 ---
 
+### Backend Repo for API | Spring Boot, Docker, PostgreSQL
+https://github.com/DexterVargas/Spring-Boot-task-tracker-API 
+
+`frontend`:: const API_BASE_URL = "http://localhost:8585"; 
+---
 ## ✨ Features
 
 ### 📊 Dashboard & Progress Tracking
