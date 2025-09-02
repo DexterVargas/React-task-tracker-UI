@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 interface TaskListCardProps {
     taskList: TaskList;
     stats: { total: number; completed: number; progress: number };
-    // onAddTask: (taskListId: string) => void;
+    onAddTask: (taskListId: string) => void;
     onEditList: (taskList: TaskList) => void;
     onDeleteList: (taskListId: string) => void;
     onViewTasks: (taskListId: string) => void;
@@ -29,7 +29,7 @@ interface TaskListCardProps {
 export function TaskListCard({
     taskList,
     stats,
-    // onAddTask, 
+    onAddTask,
     onEditList,
     onDeleteList,
     onViewTasks
@@ -145,7 +145,7 @@ export function TaskListCard({
                     <Button
                         size="sm"
                         className="bg-gradient-primary hover:opacity-90 border-0"
-                    // onClick={() => onAddTask(taskList.id)}
+                        onClick={() => onAddTask(taskList.id)}
                     >
                         <Plus className="h-4 w-4 mr-1" />
                         Add Task

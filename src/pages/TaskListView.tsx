@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-// import { useTaskStore } from '@/hooks/useTaskStore';
 import type { Task, TaskList } from '@/types';
 import { TaskCard } from '@/components/TaskCard';
 import { TaskDialog } from '@/components/TaskDialog';
@@ -23,12 +22,16 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
+
 import { TaskApiService } from "@/services/taskApi";
 import Spinner from './Spinner';
 import { NotFound } from './NotFound';
-
+import { toast } from "sonner"
 const api = new TaskApiService();
+
+
+type TaskUpdate = Omit<Task, "created" | "updated">;
+
 
 export default function TaskListView() {
     const { id } = useParams<{ id: string }>();
@@ -38,13 +41,6 @@ export default function TaskListView() {
     const [error, setError] = useState(false);
 
     const [stats, setStats] = useState({ total: 0, completed: 0, progress: 0 })
-    // const {
-    //     getTaskList,
-    //     getTaskListStats,
-    //     updateTask,
-    //     deleteTask
-    // } = useTaskStore();
-    const { toast } = useToast();
 
     const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -52,17 +48,7 @@ export default function TaskListView() {
     const [filterPriority, setFilterPriority] = useState<'all' | 'low' | 'medium' | 'high'>('all');
     const [sortBy, setSortBy] = useState<'dueDate' | 'priority' | 'created'>('dueDate');
 
-    // if (!id) {
-    //     navigate('/');
-    //     return null;
-    // }
-
-    // const taskList = getTaskList(id);
-    // const stats = getTaskListStats(id);
-
-
-
-    const fetchTaskLists = useCallback(async () => {
+    const fetchTaskList = useCallback(async () => {
         if (!id) return;
         try {
             setLoading(true);
@@ -87,52 +73,72 @@ export default function TaskListView() {
     }, [id]);
 
     useEffect(() => {
-        fetchTaskLists();
-    }, [fetchTaskLists]);
+        fetchTaskList();
+    }, [fetchTaskList]);
 
     if (!id) {
         navigate('/');
         return null;
     }
 
+    // const handleUpdateTask = async (taskListId: string, taskId: string, formData: Omit<Task, 'id' | 'created' | 'updated'>) => {
+    //     if (!taskId || !taskListId) return;
+    //     try {
+    //         const response = await api.updateTask(taskListId, taskId,
+    //             {
+    //                 ...formData,
+    //                 id: taskId,
+    //             });
 
+    //         toast.success(`Task "${formData.title}" has been updated.`);
+    //         console.log(response)
 
-    // const handleToggleTaskStatus = (taskId: string) => {
-    //     const task = taskList.tasks.find(t => t.id === taskId);
-    //     if (!task) return;
-
-    //     const newStatus = task.status === 'OPEN' ? 'CLOSED' : 'OPEN';
-    //     updateTask(id, taskId, { status: newStatus });
-
-    //     toast({
-    //         title: newStatus === 'CLOSED' ? 'Task completed' : 'Task reopened',
-    //         description: `"${task.title}" marked as ${newStatus.toLowerCase()}.`,
-    //     });
-    // };
-
-    // const handleEditTask = (task: Task) => {
-    //     setEditingTask(task);
-    //     setIsTaskDialogOpen(true);
-    // };
-
-    // const handleDeleteTask = (taskId: string) => {
-    //     const task = taskList.tasks.find(t => t.id === taskId);
-    //     if (!task) return;
-
-    //     if (confirm(`Delete "${task.title}"?`)) {
-    //         deleteTask(id, taskId);
-    //         toast({
-    //             title: 'Task deleted',
-    //             description: `"${task.title}" has been deleted.`,
-    //             variant: 'destructive',
-    //         });
+    //     } catch (error) {
+    //         toast.error('Failed to create new Task.');
     //     }
     // };
 
-    // const handleAddTask = () => {
-    //     setEditingTask(null);
-    //     setIsTaskDialogOpen(true);
-    // };
+    const handleToggleTaskStatus = async (taskId: string) => {
+        const task = taskList?.tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        const newStatus = task.status === 'OPEN' ? 'CLOSED' : 'OPEN';
+
+        //  
+        // await api.updateTaskStatus(id, taskId, {
+        //     ...taskList,
+        //     status: newStatus,
+        // } satisfies Omit<Task, "created" | "updated">);
+
+        const toastTitle = newStatus === 'CLOSED' ? 'Task completed' : 'Task reopened'
+        toast.info(toastTitle);
+        await fetchTaskList();
+    };
+
+    const handleEditTask = (task: Task) => {
+        setEditingTask(task);
+        setIsTaskDialogOpen(true);
+    };
+
+    const handleDeleteTask = async (taskId: string) => {
+        const task = taskList?.tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        try {
+            await api.deleteTask(id, taskId);
+            toast.success(`Task "${task.title}" has been deleted.`);
+            await fetchTaskList();
+        } catch (error) {
+            toast.error('Failed to delete task list.');
+            console.error(error);
+        }
+
+    };
+
+    const handleAddTask = () => {
+        setEditingTask(null);
+        setIsTaskDialogOpen(true);
+    };
 
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('en-US', {
@@ -187,7 +193,7 @@ export default function TaskListView() {
             case 'priority':
                 return priorityOrder[b.priority] - priorityOrder[a.priority];
             case 'created':
-                return new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime();
+                return new Date(b.created).getTime() - new Date(a.created).getTime();
             default:
                 return 0;
         }
@@ -232,7 +238,7 @@ export default function TaskListView() {
                         </div>
 
                         <Button
-                            // onClick={handleAddTask}
+                            onClick={handleAddTask}
                             className="bg-white/20 hover:bg-white/30 text-white border-white/30"
                             variant="outline"
                         >
@@ -333,7 +339,7 @@ export default function TaskListView() {
                                 </p>
                                 {taskList.tasks.length === 0 && (
                                     <Button
-                                        // onClick={handleAddTask} 
+                                        onClick={handleAddTask}
                                         className="bg-gradient-primary">
                                         <Plus className="h-4 w-4 mr-2" />
                                         Add First Task
@@ -346,9 +352,9 @@ export default function TaskListView() {
                             <TaskCard
                                 key={task.id}
                                 task={task}
-                            // onToggleStatus={handleToggleTaskStatus}
-                            // onEdit={handleEditTask}
-                            // onDelete={handleDeleteTask}
+                                onToggleStatus={handleToggleTaskStatus}
+                                onEdit={handleEditTask}
+                                onDelete={handleDeleteTask}
                             />
                         ))
                     )}
@@ -361,10 +367,12 @@ export default function TaskListView() {
                 onOpenChange={setIsTaskDialogOpen}
                 listId={id}
                 task={editingTask}
-                onClose={() => {
+                onClose={async () => {
                     setIsTaskDialogOpen(false);
                     setEditingTask(null);
+                    await fetchTaskList();
                 }}
+                taskListData={taskList}
             />
         </div>
     );

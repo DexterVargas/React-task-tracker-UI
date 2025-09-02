@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useTaskStore } from '@/hooks/useTaskStore';
-import type { Task, TaskStatus, TaskPriority } from '@/types';
+import { useState, useEffect, useCallback } from 'react';
+import type { Task, TaskStatus, TaskPriority, TaskList } from '@/types';
 import {
     Dialog,
     DialogContent,
@@ -18,7 +17,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
+
+import { toast } from "sonner";
 
 interface TaskDialogProps {
     open: boolean;
@@ -26,12 +32,13 @@ interface TaskDialogProps {
     listId: string | null;
     task?: Task | null;
     onClose: () => void;
+    taskListData: TaskList | null;
 }
+import { TaskApiService } from '@/services/taskApi';
 
-export function TaskDialog({ open, onOpenChange, listId, task, onClose }: TaskDialogProps) {
-    const { createTask, updateTask, getTaskList } = useTaskStore();
-    const { toast } = useToast();
+const api = new TaskApiService();
 
+export function TaskDialog({ open, onOpenChange, listId, task, onClose, taskListData }: TaskDialogProps) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [priority, setPriority] = useState<TaskPriority>('MEDIUM');
@@ -39,7 +46,8 @@ export function TaskDialog({ open, onOpenChange, listId, task, onClose }: TaskDi
     const [dueDate, setDueDate] = useState('');
 
     const isEditing = !!task;
-    const taskList = listId ? getTaskList(listId) : null;
+
+    const taskList = listId ? taskListData : null;
 
     useEffect(() => {
         if (task) {
@@ -57,24 +65,45 @@ export function TaskDialog({ open, onOpenChange, listId, task, onClose }: TaskDi
         }
     }, [task, open]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleCreateTask = async (taskListId: string, formData: Omit<Task, 'id' | 'created' | 'updated'>) => {
+        try {
+            const response = await api.createTask(taskListId, formData);
+
+            toast.success(`Task "${formData.title}" has been added to ${taskList?.title}.`);
+            console.log(response)
+
+        } catch (error) {
+            toast.error('Failed to create new Task.');
+        }
+    };
+
+    const handleUpdateTask = async (taskListId: string, taskId: string, formData: Omit<Task, 'id' | 'created' | 'updated'>) => {
+        if (!taskId || !taskListId) return;
+        try {
+            const response = await api.updateTask(taskListId, taskId,
+                {
+                    ...formData,
+                    id: taskId,
+                });
+
+            toast.success(`Task "${formData.title}" has been updated.`);
+            console.log(response)
+
+        } catch (error) {
+            toast.error('Failed to create new Task.');
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!title.trim()) {
-            toast({
-                title: 'Error',
-                description: 'Task title is required.',
-                variant: 'destructive',
-            });
+            toast.warning('Task title is required.');
             return;
         }
 
         if (!listId) {
-            toast({
-                title: 'Error',
-                description: 'Task list is required.',
-                variant: 'destructive',
-            });
+            toast.error('Your are trying to update the Task list improperly!');
             return;
         }
 
@@ -83,21 +112,13 @@ export function TaskDialog({ open, onOpenChange, listId, task, onClose }: TaskDi
             description: description.trim(),
             priority,
             status,
-            dueDate: new Date(dueDate).toISOString(),
+            dueDate: new Date(dueDate).toISOString().split(".")[0],
         };
 
         if (isEditing && task) {
-            updateTask(listId, task.id, taskData);
-            toast({
-                title: 'Task updated',
-                description: `"${taskData.title}" has been updated.`,
-            });
+            await handleUpdateTask(listId, task.id, taskData);
         } else {
-            createTask(listId, taskData);
-            toast({
-                title: 'Task created',
-                description: `"${taskData.title}" has been added to ${taskList?.title}.`,
-            });
+            await handleCreateTask(listId, taskData);
         }
 
         onClose();
@@ -107,13 +128,13 @@ export function TaskDialog({ open, onOpenChange, listId, task, onClose }: TaskDi
         onOpenChange(open);
         if (!open) onClose();
     };
-
+    // if (loading) return <Spinner />;
     return (
         <Dialog open={open} onOpenChange={handleClose}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>
-                        {isEditing ? 'Edit Task' : `Add Task to ${taskList?.title}`}
+                        {isEditing ? 'Edit Task' : `Add Task to " ${taskList?.title} "`}
                     </DialogTitle>
                 </DialogHeader>
 
@@ -157,15 +178,28 @@ export function TaskDialog({ open, onOpenChange, listId, task, onClose }: TaskDi
 
                         <div className="space-y-2">
                             <Label htmlFor="status">Status</Label>
-                            <Select value={status} onValueChange={(value: TaskStatus) => setStatus(value)}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="OPEN">Open</SelectItem>
-                                    <SelectItem value="CLOSED">Closed</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Select
+                                            value={status}
+                                            onValueChange={(value: TaskStatus) => setStatus(value)}
+                                            disabled={!isEditing}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="OPEN">Open</SelectItem>
+                                                <SelectItem value="CLOSED">Closed</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        Default Open for new Task.
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         </div>
                     </div>
 

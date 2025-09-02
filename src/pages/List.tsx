@@ -11,6 +11,7 @@ import { toast } from "sonner"
 
 
 import Spinner from './Spinner';
+import Footer from "@/components/shared/Footer";
 const api = new TaskApiService();
 
 const List = () => {
@@ -27,7 +28,7 @@ const List = () => {
     const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
     const [editingTaskList, setEditingTaskList] = useState<TaskList | null>(null);
     const [activeListId, setActiveListId] = useState<string | null>(null);
-
+    const [activeListIdData, setActiveListIdData] = useState<TaskList | null>(null);
     const totalTasks = taskLists.reduce((sum, list) => sum + list.tasks.length, 0);
     const completedTasks = taskLists.reduce((sum, list) =>
         sum + list.tasks.filter(task => task.status === 'CLOSED').length, 0
@@ -95,10 +96,12 @@ const List = () => {
         setIsTaskListDialogOpen(true);
     };
 
-    // const handleAddTask = (listId: string) => {
-    //     setActiveListId(listId);
-    //     setIsTaskDialogOpen(true);
-    // };
+    const handleAddTask = async (listId: string) => {
+        console.log("Must show add task dialog")
+        setActiveListId(listId);
+        setIsTaskDialogOpen(true);
+        setActiveListIdData(taskLists.find(list => list.id === listId) || null);
+    };
 
     useEffect(() => {
         fetchTaskLists();
@@ -129,11 +132,6 @@ const List = () => {
         window.location.href = `/list/${taskListId}`;
     };
 
-    // const handleAdd = async () => {
-    //     await createTaskList({ title: "New List", description: "Sample description" });
-    //     fetchTaskLists(); // refresh
-    // };
-
     if (loading) return <Spinner />;
 
     return (
@@ -143,8 +141,10 @@ const List = () => {
                 <div className="container mx-auto px-6 py-8">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-3xl font-bold mb-2">Dexter Vargas Task Tracker</h1>
-                            <p className="text-white/90">Organize your tasks and boost productivity</p>
+                            <h1 className="inline-block py-0.5 pl-3 text-heading z-20 relative before:content-[''] before:absolute before:w-2/3 before:ml-20 before:top-0 before:left-0 before:bottom-0 before:-z-10 before:bg-indigo-400 font-['Caveat']">
+                                <i className="text-3xl text-white/90"> 📝TASKito | <small>Task Tracking App</small></i>
+                            </h1>
+                            <p className="text-white/90 ml-20">Organize your tasks and boost productivity</p>
                         </div>
                         <Button
                             onClick={() => setIsTaskListDialogOpen(true)}
@@ -244,7 +244,7 @@ const List = () => {
                                         key={taskList.id}
                                         taskList={taskList}
                                         stats={{ total: Number(taskList.count), completed: taskCLOSED, progress: Number(taskList.progress) * 100 }}
-                                        // onAddTask={handleAddTask}
+                                        onAddTask={handleAddTask}
                                         onEditList={handleEditTaskList}
                                         onDeleteList={handleDeleteTaskList}
                                         onViewTasks={handleViewTasks}
@@ -266,15 +266,19 @@ const List = () => {
                 isCreating={isCreating}
             />
 
-            {/* <TaskDialog
+            <TaskDialog
                 open={isTaskDialogOpen}
                 onOpenChange={setIsTaskDialogOpen}
                 listId={activeListId}
-                onClose={() => {
+                onClose={async () => {
                     setIsTaskDialogOpen(false);
                     setActiveListId(null);
+                    await fetchTaskLists();
                 }}
-            /> */}
+                taskListData={activeListIdData}
+            />
+
+            <Footer />
         </div>
     );
 }

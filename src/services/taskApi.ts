@@ -67,6 +67,41 @@ export class TaskApiService {
         );
     }
 
+    async createTask(taskListId: string, reqBody: { title: string, description: string, priority: string, status: string, dueDate: string }): Promise<Task> {
+        return this.request(`/task-lists/${taskListId}/tasks`,
+            {
+                method: 'POST',
+                body: JSON.stringify(reqBody)
+            }
+        );
+    }
+
+    async updateTask(taskListId: string, taskId: string, reqBody: Omit<Task, 'created' | 'updated'>): Promise<Task> {
+        return this.request(`/task-lists/${taskListId}/tasks/${taskId}`,
+            {
+                method: 'PUT',
+                body: JSON.stringify(reqBody)
+            }
+        );
+    }
+
+    async updateTaskStatus(taskListId: string, taskId: string, reqBody: Pick<Task, "id" | "status">): Promise<Task> {
+        return this.request(`/task-lists/${taskListId}/tasks/${taskId}`,
+            {
+                method: 'PUT',
+                body: JSON.stringify(reqBody)
+            }
+        );
+    }
+
+    async deleteTask(taskListId: string, taskId: string,): Promise<void> {
+        return this.request(`/task-lists/${taskListId}/tasks/${taskId}`,
+            {
+                method: 'DELETE'
+            }
+        );
+    }
+
 }
 
 // ---- Task List API ----

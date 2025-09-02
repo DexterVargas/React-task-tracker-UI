@@ -6,11 +6,22 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar, Clock, Edit2, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger
+} from "@/components/ui/alert-dialog";
+
 interface TaskCardProps {
     task: Task;
-    // onToggleStatus: (taskId: string) => void;
-    // onEdit: (task: Task) => void;
-    // onDelete: (taskId: string) => void;
+    onToggleStatus: (taskId: string) => void;
+    onEdit: (task: Task) => void;
+    onDelete: (taskId: string) => void;
 }
 
 const priorityConfig = {
@@ -21,9 +32,9 @@ const priorityConfig = {
 
 export function TaskCard({
     task,
-    // onToggleStatus, 
-    // onEdit, 
-    // onDelete 
+    onToggleStatus,
+    onEdit,
+    onDelete
 }: TaskCardProps) {
     const isCompleted = task.status === 'CLOSED';
     const isOverdue = new Date(task.dueDate) < new Date() && !isCompleted;
@@ -70,14 +81,34 @@ export function TaskCard({
                                 >
                                     <Edit2 className="h-4 w-4" />
                                 </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                                    onClick={() => onDelete(task.id)}
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
+
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>
+                                                Are you sure you want to delete task from your list?
+                                            </AlertDialogTitle>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction
+                                                onClick={() => onDelete(task.id)}
+                                                className="bg-red-600 text-white hover:bg-red-700"
+                                            >
+                                                Delete
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
                             </div>
                         </div>
 
