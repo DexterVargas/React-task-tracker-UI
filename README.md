@@ -1,4 +1,4 @@
-# Dexter Vargas Task Tracker Project
+# TASKito | Task Tracking App
 
 A modern and fully functional **Task Tracker App**  
 Built with a clean interface, smooth animations, and professional design to make task management simple and effective.
